@@ -1,10 +1,10 @@
 library twilio_programmable_video;
 
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:collection/collection.dart' show IterableExtension;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -13,7 +13,6 @@ import 'package:twilio_programmable_video_platform_interface/twilio_programmable
 export 'package:twilio_programmable_video_platform_interface/src/audio_codecs/audio_codec.dart';
 export 'package:twilio_programmable_video_platform_interface/src/enums/enum_exports.dart';
 export 'package:twilio_programmable_video_platform_interface/src/video_codecs/video_codec.dart';
-
 export 'package:twilio_programmable_video_platform_interface/src/camera_source.dart';
 
 part 'audio_settings.dart';
@@ -46,6 +45,7 @@ part 'local_video_track.dart';
 part 'local_video_track_publication.dart';
 part 'network_quality_configuration.dart';
 part 'participant.dart';
+part 'preview_options.dart';
 part 'programmable_video.dart';
 part 'remote_audio_track.dart';
 part 'remote_audio_track_publication.dart';

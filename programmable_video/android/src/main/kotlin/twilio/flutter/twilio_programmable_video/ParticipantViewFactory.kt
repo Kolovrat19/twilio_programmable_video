@@ -1,6 +1,9 @@
 package twilio.flutter.twilio_programmable_video
 
 import android.content.Context
+import android.view.Gravity
+import android.widget.FrameLayout
+import com.twilio.video.VideoScaleType
 import com.twilio.video.VideoTrack
 import com.twilio.video.VideoView
 import io.flutter.plugin.common.MessageCodec
@@ -10,39 +13,62 @@ import io.flutter.plugin.platform.PlatformViewFactory
 class ParticipantViewFactory(createArgsCodec: MessageCodec<Any>, private val plugin: PluginHandler) : PlatformViewFactory(createArgsCodec) {
     private val TAG = "RoomListener"
 
-    override fun create(context: Context, viewId: Int, args: Any?): PlatformView? {
+    override fun create(context: Context?, viewId: Int, args: Any?): PlatformView {
         var videoTrack: VideoTrack? = null
+        val params = args as? Map<*, *> ?: throw IllegalStateException("args cannot be null")
 
-        if (args != null) {
-            val params = args as Map<String, Any>
-            if (params.containsKey("isLocal")) {
-                debug("create => constructing local view")
-                val localParticipant = plugin.getLocalParticipant()
-                if (localParticipant != null && localParticipant.localVideoTracks != null && localParticipant.localVideoTracks?.size != 0) {
-                    videoTrack = localParticipant.localVideoTracks!![0].localVideoTrack
-                }
+        if (params["isLocal"] == true) {
+            debug("create => constructing local view with params: '${params.values.joinToString(", ")}'")
+            val localVideoTrackName = params["name"] as? String ?: ""
+            if (localVideoTrackName != "" && localVideoTrackName in TwilioProgrammableVideoPlugin.localVideoTracks) {
+                videoTrack = TwilioProgrammableVideoPlugin.localVideoTracks[localVideoTrackName]
             } else {
-                debug("create => constructing view with params: '${params.values.joinToString(", ")}'")
-                if (params.containsKey("remoteParticipantSid") && params.containsKey("remoteVideoTrackSid")) {
-                    val remoteParticipant = plugin.getRemoteParticipant(params["remoteParticipantSid"] as String)
-                    val remoteVideoTrack = remoteParticipant?.remoteVideoTracks?.find { it.trackSid == params["remoteVideoTrackSid"] }
-                    if (remoteParticipant != null && remoteVideoTrack != null) {
-                        videoTrack = remoteVideoTrack.remoteVideoTrack
-                    }
+                val localParticipant = plugin.getLocalParticipant()
+                if (localParticipant?.localVideoTracks?.isNotEmpty() == true) {
+                    videoTrack = localParticipant.localVideoTracks.firstOrNull()?.localVideoTrack
                 }
             }
-
-            if (videoTrack != null) {
-                val videoView = VideoView(context)
-                videoView.mirror = params["mirror"] as Boolean
-                return ParticipantView(videoView, videoTrack)
+        } else {
+            debug("create => constructing view with params: '${params.values.joinToString(", ")}'")
+            if ("remoteParticipantSid" in params && "remoteVideoTrackSid" in params) {
+                val remoteParticipant = plugin.getRemoteParticipant(params["remoteParticipantSid"] as String)
+                val remoteVideoTrack = remoteParticipant?.remoteVideoTracks?.find { it.trackSid == params["remoteVideoTrackSid"] }
+                if (remoteParticipant != null && remoteVideoTrack != null) {
+                    videoTrack = remoteVideoTrack.remoteVideoTrack
+                }
             }
         }
 
-        return null
+        if (videoTrack == null) {
+            throw IllegalStateException("Could not create VideoTrack")
+        }
+        val videoView = VideoView(context as Context)
+        val layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            gravity = Gravity.CENTER
+        }
+        videoView.setLayoutParams(layoutParams)
+
+        val scaleType = this.getScaleTypeFromInt(params["renderMode"] as Int)
+        videoView.mirror = params["mirror"] as Boolean
+        videoView.videoScaleType = scaleType
+
+        return ParticipantView(videoView, videoTrack)
     }
 
     internal fun debug(msg: String) {
         TwilioProgrammableVideoPlugin.debug("$TAG::$msg")
+    }
+
+    private fun getScaleTypeFromInt(typeInt: Int): VideoScaleType {
+        if (typeInt == 2) {
+            return VideoScaleType.ASPECT_FILL
+        } else if (typeInt == 1) {
+            return VideoScaleType.ASPECT_FIT
+        } else {
+            return VideoScaleType.ASPECT_BALANCED
+        }
     }
 }
